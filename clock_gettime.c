@@ -42,21 +42,28 @@ int
 clock_gettime(int clock_id, struct timespec *ts)
 {
   mach_timespec_t mts;
-  clock_serv_t clock_serv;
+  static clock_serv_t rt_clock_serv = 0;
+  static clock_serv_t mono_clock_serv = 0;
+
   switch (clock_id) {
   case CLOCK_REALTIME:
-    (void) host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &clock_serv);
-    break;
+    if (rt_clock_serv == 0) {
+      (void) host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &rt_clock_serv);
+    }
+    (void) clock_get_time(rt_clock_serv, &mts);
+    ts->tv_sec = mts.tv_sec;
+    ts->tv_nsec = mts.tv_nsec;
+    return 0;
   case CLOCK_MONOTONIC:
-    (void) host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &clock_serv);
-    break;
+    if (mono_clock_serv == 0) {
+      (void) host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &mono_clock_serv);
+    }
+    (void) clock_get_time(mono_clock_serv, &mts);
+    ts->tv_sec = mts.tv_sec;
+    ts->tv_nsec = mts.tv_nsec;
+    return 0;
   default:
     errno = EINVAL;
     return -1;
   }
- 
-  (void) clock_get_time(clock_serv, &mts);
-  ts->tv_sec = mts.tv_sec;
-  ts->tv_nsec = mts.tv_nsec;
-  return 0;
 }
